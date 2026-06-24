@@ -1,35 +1,46 @@
 {
   "name": "codemon-tcg",
   "displayName": "CodeMon TCG",
-  "version": "1.0.0",
-  "publisher": "Elijah Jorgensen",
+  "description": "Turn syntax errors into booster packs.",
+  "version": "0.0.1",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.75.0"
   },
-  "activationEvents": [
-    "onStartupFinished"
+  "categories": [
+    "Other"
   ],
-  "main": "./out/extension.js",
+  "activationEvents": [],
+  "main": "./src/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codemon-binder-sidebar",
+          "title": "CodeMon TCG",
+          "icon": "$(cards)"
+        }
+      ]
+    },
+    "views": {
+      "codemon-binder-sidebar": [
+        {
+          "icon": "icon.png",
+          "type": "webview",
+          "id": "codemon.binderView",
+          "name": "Card Collection"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "codemon.openBinder",
-        "title": "CodeMon: Open Binder"
+        "command": "codemon.openShop",
+        "title": "Open CodeMon Shop"
       },
       {
-        "command": "codemon.openTrade",
-        "title": "CodeMon: Open Trade"
+        "command": "codemon.addPack",
+        "title": "CodeMon: Add Test Pack",
+        "description": "Add a booster pack to your collection (for testing)"
       }
     ]
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
-  },
-  "devDependencies": {
-    "@types/node": "^26.0.0",
-    "@types/vscode": "^1.80.0",
-    "typescript": "^5.0.0"
   }
 }
