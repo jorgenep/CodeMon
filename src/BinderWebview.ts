@@ -1,12 +1,15 @@
 import { PokemonCard } from './PokemonDB';
-import { PackConfig } from './ShopDB';
+import { CARDS_PER_BOOSTER, PackConfig } from './ShopDB';
+
+const getPokemonArtworkUrl = (pokemonId: number): string =>
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`;
 
 export const getWebviewContent = (cards: PokemonCard[], xp: number, shopInventory: PackConfig[]): string => {
     const cardMarkup = cards.length
         ? cards
               .map(
                   (card) =>
-                      `<article class="card rarity-${card.rarity.toLowerCase()}"><h3>${card.name}</h3><p>${card.type}</p><span>${card.rarity}</span></article>`
+                      `<article class="card rarity-${card.rarity.toLowerCase()}"><img src="${getPokemonArtworkUrl(card.id)}" alt="${card.name}" /><h3>${card.name}</h3><p>${card.type}</p><span>${card.rarity}</span></article>`
               )
               .join('')
         : '<p class="empty">No cards yet. Open your first pack below.</p>';
@@ -14,7 +17,7 @@ export const getWebviewContent = (cards: PokemonCard[], xp: number, shopInventor
     const shopMarkup = shopInventory
         .map(
             (pack) =>
-                `<button class="pack" data-pack-id="${pack.id}"><strong>${pack.name}</strong><span>${pack.cards} card(s)</span><span>${pack.cost} XP</span></button>`
+                `<button class="pack" data-pack-id="${pack.id}"><strong>${pack.name}</strong><span>${pack.description}</span><span>${pack.boosterPacks * CARDS_PER_BOOSTER + pack.bonusCards} card(s)</span><span>${pack.cost} XP</span></button>`
         )
         .join('');
 
@@ -24,6 +27,7 @@ export const getWebviewContent = (cards: PokemonCard[], xp: number, shopInventor
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
     <style>
         :root {
             --bg: radial-gradient(circle at 20% 20%, #223654 0%, #101626 55%, #090d16 100%);
@@ -88,6 +92,14 @@ export const getWebviewContent = (cards: PokemonCard[], xp: number, shopInventor
             padding: 10px;
             background: rgba(255, 255, 255, 0.04);
         }
+        .card img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: contain;
+            display: block;
+            margin-bottom: 8px;
+            image-rendering: auto;
+        }
         .card h3 { margin: 0 0 6px; font-size: 1rem; }
         .card p { margin: 0 0 8px; color: var(--muted); }
         .card span { font-size: 0.86rem; }
@@ -114,6 +126,7 @@ export const getWebviewContent = (cards: PokemonCard[], xp: number, shopInventor
     </main>
     <script>
         const vscode = acquireVsCodeApi();
+        const getPokemonArtworkUrl = (pokemonId) => 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + pokemonId + '.png';
         for (const button of document.querySelectorAll('.pack')) {
             button.addEventListener('click', () => {
                 vscode.postMessage({ command: 'openPack', packId: button.dataset.packId });
@@ -126,7 +139,7 @@ export const getWebviewContent = (cards: PokemonCard[], xp: number, shopInventor
             }
             const nextHtml = message.cards.length
                 ? message.cards.map((card) =>
-                    '<article class="card rarity-' + String(card.rarity).toLowerCase() + '"><h3>' + card.name + '</h3><p>' + card.type + '</p><span>' + card.rarity + '</span></article>'
+                                        '<article class="card rarity-' + String(card.rarity).toLowerCase() + '"><img src="' + getPokemonArtworkUrl(card.id) + '" alt="' + card.name + '" /><h3>' + card.name + '</h3><p>' + card.type + '</p><span>' + card.rarity + '</span></article>'
                   ).join('')
                 : '<p class="empty">No cards yet. Open your first pack below.</p>';
             document.getElementById('binder-grid').innerHTML = nextHtml;
