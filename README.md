@@ -1,76 +1,60 @@
-# CodeMon TCG: The Gamified Developer Experience
+# CodeMon TCG 🎮🐛
+### Turn your code into a collection.
 
-**Turn your syntax errors into shiny holographics!** CodeMon TCG is a VS Code extension that transforms your daily debugging grind into a rewarding Trading Card Game experience. Fix code, earn XP, buy booster packs, and build your ultimate card binder—all without leaving your editor.
+CodeMon TCG is a local-first, lightweight VS Code extension that turns your coding grind into a nostalgic Trading Card Game experience. Earn XP by coding, crack open packs, trade with friends via link-codes, and customize your editor—all while staying 100% offline and secure.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blueviolet.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-
----
-
-## Features
-
-### The Grind: Squash Bugs for XP
-No more silent relief when the red squiggles disappear. CodeMon TCG listens to your active workspace diagnostics. Every time you successfully clear an error or linter warning and save your file, you are rewarded with an XP drop. 
-* *Example: Fixed a missing semicolon? +10 XP. Resolved a nasty type error? +50 XP.*
-
-### The Shop: Status Bar Economy
-Keep an eye on your wallet right in the VS Code Status Bar. Your current XP balance is always visible at the bottom of your screen. Click the balance to open the Quick Pick menu and spend your hard-earned XP on Booster Packs.
-* *Basic Pack:* 100 XP
-* *Type-Specific Pack (e.g., Fire, Water, Electric):* 500 XP
-
-### The Reveal: Tear Open Packs
-Purchasing a pack triggers an interactive Webview in your sidebar. Experience the dopamine hit of a real TCG with smooth CSS animations as you flip over your new cards. Will you pull a common Pidgey, or a Holographic Charizard?
-
-### The Binder: Sidebar Collection
-Your sidebar acts as your digital binder. Track your collection completion percentage, view your rarest pulls, and manage your duplicates directly within the VS Code UI.
+![CodeMon Marketplace Banner](https://raw.githubusercontent.com/YourUsername/codemon-tcg/main/resources/banner.png)
 
 ---
 
-## Getting Started
+## 🚀 The Core Loop
 
-### Installation
-1. Open VS Code.
-2. Navigate to the Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`).
-3. Search for **CodeMon TCG**.
-4. Click **Install**.
+### 🐛 Earn XP, Pull Packs
+CodeMon silently rewards your workflow. 
+* **Manual Typing:** Earn XP for every line you write.
+* **Flow State:** Stay focused for long sessions to earn "Flow Bonuses."
+* **Bug Squashing:** Fixing code diagnostics earns you the most XP.
+* **The Pack Opening:** Spend your XP to crack open **Base Set Booster Packs**, **Tins**, and **Elite Trainer Boxes**. Experience the 3D-flip reveal and chase the legendary Mewtwo!
 
-### How to Play
-1. Open any coding project and start typing. 
-2. Make a mistake (it happens to the best of us).
-3. Fix the syntax error, clear the linter warning, and save the file.
-4. Watch your XP grow in the bottom Status Bar!
-5. Click your XP balance to buy a pack.
-6. Open the CodeMon icon in your Activity Bar (Sidebar) to rip the pack open and view your binder.
+### 🤝 Secure Clipboard Trading
+Completed your set? Need that last piece?
+* Generate a **Secure Trade Code** in-game.
+* Share it with a friend. 
+* Paste the encrypted string into your game to swap cards safely.
+* No servers, no tracking—just pure playground-style trading.
 
----
-
-## Extension Architecture
-
-For developers interested in contributing, CodeMon TCG utilizes the following VS Code APIs:
-* **`vscode.languages.onDidChangeDiagnostics`**: Tracks the addition and removal of file errors/warnings to calculate XP rewards.
-* **`vscode.window.createStatusBarItem`**: Anchors the live XP wallet and shop trigger to the bottom of the editor.
-* **`vscode.window.registerWebviewViewProvider`**: Powers the Sidebar Binder and handles the DOM manipulation/CSS animations for pack openings.
+### 🎨 Customize Your Workspace
+Don't just collect cards; collect themes.
+* Use your duplicate cards to earn **Cosmetic Coins**.
+* Spend Coins to unlock **Editor Themes** and **Custom Backgrounds**.
+* Make your VS Code instance truly yours.
 
 ---
 
-## Contributing
+## 🔒 Privacy & Security
 
-Pull requests are welcome! If you have ideas for new card types, better pack-opening animations, or new ways to earn XP (like maintaining a Git commit streak), feel free to open an issue or submit a PR.
-
-1. Fork the project.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+**CodeMon TCG is built for the developer who values privacy.**
+* **100% Local:** Your collection and wallet data live on your machine, not on a server.
+* **Obfuscated Vault:** Your progress is stored in an encrypted vault, preventing casual tampering while keeping your data lightweight and offline.
+* **No Telemetry:** We don't track your code, your projects, or your typing habits. Your data is yours.
 
 ---
 
-## License
+## 🛠️ How to Get Started
 
-Distributed under the MIT License. See `LICENSE` for more information.
+1. **Install:** Download **CodeMon TCG** from the Marketplace.
+2. **Code:** Keep an eye on the Status Bar. Your XP will naturally accumulate as you code.
+3. **Shop:** Click the Status Bar balance to open your **Binder & Shop**.
+4. **Trade:** Open the Trade tab to generate your first Link Code and share it with a friend.
 
 ---
 
-**Publisher:** Valkyrie Dev  
-**Author:** Elijah Paul Jorgensen
+## 📜 Development Philosophy
+This project was built to bring the feeling of classic 90s card collecting to the modern dev workflow. It is designed to be lightweight, non-intrusive, and "free forever."
+
+*Disclaimer: CodeMon TCG is an unofficial fan project and is not affiliated with, endorsed by, or connected to Nintendo, Game Freak, or The Pokémon Company. All card data is provided for entertainment purposes.*
+
+---
+
+## 💡 Support the Project
+Enjoying the grind? Consider starring the [GitHub Repo](https://github.com/YourUsername/codemon-tcg) and sharing your best pull on social media!
