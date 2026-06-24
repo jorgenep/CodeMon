@@ -4,6 +4,9 @@ const { createStatusBarWallet } = require('./statusBarWallet');
 const { BinderWebviewProvider } = require('./binderWebview');
 
 function activate(context) {
+    // context.globalState.update('myCards', []); // Uncomment to reset cards for testing
+    // context.globalState.update('xpBalance', 0); // Reset XP balance for testing
+    // context.globalState.update('unopenedPacks', []); // Reset unopened packs for testing
     console.log('CodeMon TCG is active!');
 
     // 1. Initialize State Variables
