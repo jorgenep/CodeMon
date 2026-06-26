@@ -9,7 +9,10 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:codemon.showStats",
+    "onCommand:codemon.resetStats"
+  ],
   "main": "./src/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -40,6 +43,16 @@
         "command": "codemon.addPack",
         "title": "CodeMon: Add Test Pack",
         "description": "Add a booster pack to your collection (for testing)"
+      },
+      {
+        "command": "codemon.showStats",
+        "title": "CodeMon: Show XP Tracker Stats",
+        "description": "Display anti-cheat analysis and activity statistics"
+      },
+      {
+        "command": "codemon.resetStats",
+        "title": "CodeMon: Reset Anti-Cheat Stats",
+        "description": "Reset all activity tracking data (for testing)"
       }
     ]
   }

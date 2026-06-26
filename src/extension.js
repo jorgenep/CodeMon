@@ -40,21 +40,73 @@ function activate(context) {
         }
     }
 
-    // 4. Start tracking background linting errors
-    initializeXPTracker(context, () => {
+    // Initialize state tracking for XP types
+    if (context.globalState.get('bugFixesDetected') === undefined) context.globalState.update('bugFixesDetected', 0);
+    if (context.globalState.get('consistentCodingXP') === undefined) context.globalState.update('consistentCodingXP', 0);
+    if (context.globalState.get('fileSavesTracked') === undefined) context.globalState.update('fileSavesTracked', 0);
+    if (context.globalState.get('suspiciousActivitiesDetected') === undefined) context.globalState.update('suspiciousActivitiesDetected', 0);
+
+    // 4. Start tracking background linting errors with advanced detection
+    const xpTracker = initializeXPTracker(context, (amount, type, metadata) => {
+        // Only award XP if amount is greater than 0
+        if (amount <= 0) {
+            if (type === 'bug_fix_flagged') {
+                const suspicious = (context.globalState.get('suspiciousActivitiesDetected') || 0) + 1;
+                context.globalState.update('suspiciousActivitiesDetected', suspicious);
+                vscode.window.setStatusBarMessage('⚠️ Suspicious activity detected - no XP awarded', 3000);
+            }
+            return;
+        }
+
+        // Award XP
         let currentXp = context.globalState.get('xpBalance') || 0;
-        currentXp += 10;
+        currentXp += amount;
         context.globalState.update('xpBalance', currentXp);
 
-        const totalXpEarned = (context.globalState.get('totalXpEarned') || 0) + 10;
+        const totalXpEarned = (context.globalState.get('totalXpEarned') || 0) + amount;
         context.globalState.update('totalXpEarned', totalXpEarned);
 
-        const bugsFixed = (context.globalState.get('bugsFixed') || 0) + 1;
-        context.globalState.update('bugsFixed', bugsFixed);
+        // Track by activity type
+        let statusMessage = `$(check) +${amount} XP`;
+        let activityType = 'unknown';
+
+        switch (type) {
+            case 'bug_fix':
+                const bugsFixed = (context.globalState.get('bugsFixed') || 0) + 1;
+                context.globalState.update('bugsFixed', bugsFixed);
+                const bugDetects = (context.globalState.get('bugFixesDetected') || 0) + 1;
+                context.globalState.update('bugFixesDetected', bugDetects);
+                statusMessage = `$(check) Bug fixed! +${amount} XP`;
+                activityType = 'bug_fix';
+                break;
+            case 'bug_fix_suspicious':
+                const suspDetects = (context.globalState.get('suspiciousActivitiesDetected') || 0) + 1;
+                context.globalState.update('suspiciousActivitiesDetected', suspDetects);
+                const bugSuspFixed = (context.globalState.get('bugsFixed') || 0) + 1;
+                context.globalState.update('bugsFixed', bugSuspFixed);
+                statusMessage = `⚠️ Suspicious fix detected +${amount} XP (reduced)`;
+                activityType = 'bug_fix_suspicious';
+                if (metadata) {
+                    console.log(`[Anti-Cheat] Trust Score: ${metadata.trustScore}/100, Suspicion: ${metadata.suspicionScore}/100`, metadata.factors);
+                }
+                break;
+            case 'consistent_coding':
+                const codingXp = (context.globalState.get('consistentCodingXP') || 0) + amount;
+                context.globalState.update('consistentCodingXP', codingXp);
+                statusMessage = `$(edit) Consistent coding! +${amount} XP`;
+                activityType = 'consistent_coding';
+                break;
+            case 'file_save':
+                const fileSaves = (context.globalState.get('fileSavesTracked') || 0) + 1;
+                context.globalState.update('fileSavesTracked', fileSaves);
+                statusMessage = `$(save) File saved! +${amount} XP`;
+                activityType = 'file_save';
+                break;
+        }
 
         statusBarWallet.updateText();
         // Quiet inline status bar message — no modal popup
-        vscode.window.setStatusBarMessage('$(check) +10 XP', 2500);
+        vscode.window.setStatusBarMessage(statusMessage, 2500);
         provider.updateBinderData();
         refreshAchievements();
     });
@@ -72,6 +124,65 @@ function activate(context) {
         context.globalState.update('packsOpened', opened);
         refreshAchievements();
     };
+
+    // Debug Command: Display anti-cheat stats and analysis
+    context.subscriptions.push(
+        vscode.commands.registerCommand('codemon.showStats', async () => {
+            const stats = xpTracker.getActivityStats();
+            const analysis = xpTracker.getDetailedAnalysis();
+            
+            const trustLevel = analysis.trustScore >= 80 ? '✅ Excellent' : 
+                               analysis.trustScore >= 60 ? '⚠️ Good' :
+                               analysis.trustScore >= 40 ? '⚠️ Moderate' : '🚫 Low';
+
+            const message = `
+📊 **CodeMon XP Tracker Stats**
+
+🎮 Activity:
+  • Total Edits: ${stats.editCount}
+  • Bug Fixes: ${stats.errorFixCount}
+  • Files Modified: ${Object.keys(stats.fileEditCounts).length}
+
+🛡️ Anti-Cheat Analysis:
+  • Trust Score: ${Math.round(analysis.trustScore)}/100 ${trustLevel}
+  • Cheat Attempts Detected: ${analysis.cheatAttempts}
+  • Suspicious Activities: ${context.globalState.get('suspiciousActivitiesDetected') || 0}
+
+📈 XP Breakdown:
+  • Bug Fixes (Direct): ${context.globalState.get('bugFixesDetected') || 0}
+  • Consistent Coding XP: ${context.globalState.get('consistentCodingXP') || 0}
+  • File Saves: ${context.globalState.get('fileSavesTracked') || 0}
+  • Total XP Earned: ${context.globalState.get('totalXpEarned') || 0}
+
+${analysis.recentHistory.length > 0 ? `📋 Recent Activity (Last 10):
+${analysis.recentHistory.slice(-5).map((e, i) => 
+  `  ${i + 1}. ${e.errorsFixed > 0 ? '✅ Fixed' : '❌ Created'} ${e.errorsFixed || e.errorsCreated} error(s) - ${e.errorType}`
+).join('\n')}` : '  No recent activity'}
+            `.trim();
+
+            await vscode.window.showInformationMessage(message, { modal: false });
+        })
+    );
+
+    // Debug Command: Reset anti-cheat stats (for testing)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('codemon.resetStats', async () => {
+            const confirmed = await vscode.window.showWarningMessage(
+                'Reset all anti-cheat tracking data?',
+                'Yes, reset',
+                'Cancel'
+            );
+            
+            if (confirmed === 'Yes, reset') {
+                xpTracker.resetActivityStats();
+                context.globalState.update('bugFixesDetected', 0);
+                context.globalState.update('consistentCodingXP', 0);
+                context.globalState.update('fileSavesTracked', 0);
+                context.globalState.update('suspiciousActivitiesDetected', 0);
+                vscode.window.setStatusBarMessage('✨ Anti-cheat stats reset!', 2000);
+            }
+        })
+    );
 
     // Run achievement check once at startup to catch any pre-existing progress
     refreshAchievements();
