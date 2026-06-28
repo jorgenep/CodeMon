@@ -36,6 +36,12 @@ This version does not contribute custom settings yet.
 
 See CHANGELOG.md for version history.
 
+### Latest Updates
+
+- `0.1.3`: Sidebar icon compatibility update using a dedicated monochrome Activity Bar SVG to avoid placeholder icon rendering.
+- `0.1.2`: Bonus Pack command fix for generation selection (`CodeMon: Add Bonus Pack`) plus release documentation updates.
+- `0.1.1`: Responsive, centered pack-opening animation updates with bounded card travel in narrow and wide sidebars.
+
 ## Contributing
 
 1. Fork the repository.

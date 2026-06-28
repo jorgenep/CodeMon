@@ -53,7 +53,7 @@ function activate(context) {
             if (type === 'bug_fix_flagged') {
                 const suspicious = (context.globalState.get('suspiciousActivitiesDetected') || 0) + 1;
                 context.globalState.update('suspiciousActivitiesDetected', suspicious);
-                vscode.window.setStatusBarMessage('⚠️ Suspicious activity detected - no XP awarded', 3000);
+                vscode.window.setStatusBarMessage('Suspicious activity detected - no XP awarded', 3000);
             }
             return;
         }
@@ -84,7 +84,7 @@ function activate(context) {
                 context.globalState.update('suspiciousActivitiesDetected', suspDetects);
                 const bugSuspFixed = (context.globalState.get('bugsFixed') || 0) + 1;
                 context.globalState.update('bugsFixed', bugSuspFixed);
-                statusMessage = `⚠️ Suspicious fix detected +${amount} XP (reduced)`;
+                statusMessage = `Suspicious fix detected +${amount} XP (reduced)`;
                 activityType = 'bug_fix_suspicious';
                 if (metadata) {
                     console.log(`[Anti-Cheat] Trust Score: ${metadata.trustScore}/100, Suspicion: ${metadata.suspicionScore}/100`, metadata.factors);
@@ -160,32 +160,32 @@ function activate(context) {
             const stats = xpTracker.getActivityStats();
             const analysis = xpTracker.getDetailedAnalysis();
             
-            const trustLevel = analysis.trustScore >= 80 ? '✅ Excellent' : 
-                               analysis.trustScore >= 60 ? '⚠️ Good' :
-                               analysis.trustScore >= 40 ? '⚠️ Moderate' : '🚫 Low';
+            const trustLevel = analysis.trustScore >= 80 ? 'Excellent' : 
+                               analysis.trustScore >= 60 ? 'Good' :
+                               analysis.trustScore >= 40 ? 'Moderate' : 'Low';
 
             const message = `
-📊 **CodeMon XP Tracker Stats**
+**CodeMon XP Tracker Stats**
 
-🎮 Activity:
+Activity:
   • Total Edits: ${stats.editCount}
   • Bug Fixes: ${stats.errorFixCount}
   • Files Modified: ${Object.keys(stats.fileEditCounts).length}
 
-🛡️ Anti-Cheat Analysis:
+Anti-Cheat Analysis:
   • Trust Score: ${Math.round(analysis.trustScore)}/100 ${trustLevel}
   • Cheat Attempts Detected: ${analysis.cheatAttempts}
   • Suspicious Activities: ${context.globalState.get('suspiciousActivitiesDetected') || 0}
 
-📈 XP Breakdown:
+XP Breakdown:
   • Bug Fixes (Direct): ${context.globalState.get('bugFixesDetected') || 0}
   • Consistent Coding XP: ${context.globalState.get('consistentCodingXP') || 0}
   • File Saves: ${context.globalState.get('fileSavesTracked') || 0}
   • Total XP Earned: ${context.globalState.get('totalXpEarned') || 0}
 
-${analysis.recentHistory.length > 0 ? `📋 Recent Activity (Last 10):
+${analysis.recentHistory.length > 0 ? `Recent Activity (Last 10):
 ${analysis.recentHistory.slice(-5).map((e, i) => 
-  `  ${i + 1}. ${e.errorsFixed > 0 ? '✅ Fixed' : '❌ Created'} ${e.errorsFixed || e.errorsCreated} error(s) - ${e.errorType}`
+  `  ${i + 1}. ${e.errorsFixed > 0 ? 'Fixed' : 'Created'} ${e.errorsFixed || e.errorsCreated} error(s) - ${e.errorType}`
 ).join('\n')}` : '  No recent activity'}
             `.trim();
 
@@ -208,7 +208,7 @@ ${analysis.recentHistory.slice(-5).map((e, i) =>
                 context.globalState.update('consistentCodingXP', 0);
                 context.globalState.update('fileSavesTracked', 0);
                 context.globalState.update('suspiciousActivitiesDetected', 0);
-                vscode.window.setStatusBarMessage('✨ Anti-cheat stats reset!', 2000);
+                vscode.window.setStatusBarMessage('Anti-cheat stats reset!', 2000);
             }
         })
     );
