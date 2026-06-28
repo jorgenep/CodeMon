@@ -1,18 +1,40 @@
 {
   "name": "codemon-tcg",
   "displayName": "CodeMon TCG",
-  "description": "Turn syntax errors into booster packs.",
-  "version": "0.0.1",
+  "description": "Gamify coding by turning productive edits and bug fixes into collectible booster packs.",
+  "version": "0.1.2",
+  "publisher": "jorgenep",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jorgenep/CodeMon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jorgenep/CodeMon/issues"
+  },
+  "homepage": "https://github.com/jorgenep/CodeMon#readme",
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
+    "Education",
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:codemon.showStats",
-    "onCommand:codemon.resetStats"
+  "keywords": [
+    "gamification",
+    "pokemon",
+    "productivity",
+    "xp",
+    "coding-game"
   ],
+  "scripts": {
+    "lint": "echo \"No linter configured yet\"",
+    "test": "echo \"No tests configured yet\"",
+    "validate": "npm run lint && npm run test",
+    "package": "npx @vscode/vsce package",
+    "prepublishOnly": "npm run validate"
+  },
   "main": "./src/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -20,7 +42,7 @@
         {
           "id": "codemon-binder-sidebar",
           "title": "CodeMon TCG",
-          "icon": "$(cards)"
+          "icon": "resources/codemon.svg"
         }
       ]
     },
@@ -37,23 +59,30 @@
     "commands": [
       {
         "command": "codemon.openShop",
-        "title": "Open CodeMon Shop"
+        "title": "Open Shop",
+        "category": "CodeMon"
       },
       {
         "command": "codemon.addPack",
-        "title": "CodeMon: Add Test Pack",
-        "description": "Add a booster pack to your collection (for testing)"
+        "title": "Add Bonus Pack",
+        "category": "CodeMon",
+        "description": "Add a free booster pack to your inventory"
       },
       {
         "command": "codemon.showStats",
-        "title": "CodeMon: Show XP Tracker Stats",
+        "title": "Show Tracker Stats",
+        "category": "CodeMon",
         "description": "Display anti-cheat analysis and activity statistics"
       },
       {
         "command": "codemon.resetStats",
-        "title": "CodeMon: Reset Anti-Cheat Stats",
+        "title": "Reset Tracker Stats",
+        "category": "CodeMon",
         "description": "Reset all activity tracking data (for testing)"
       }
     ]
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.2"
   }
 }

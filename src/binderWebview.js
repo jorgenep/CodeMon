@@ -252,12 +252,39 @@ class BinderWebviewProvider {
                     .card.unowned .name { opacity: 0.85; }
 
                     #animationOverlay {
-                        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                        background: rgba(10, 10, 15, 0.95); display: none; flex-direction: column;
-                        align-items: center; justify-content: center; z-index: 1000;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(10, 10, 15, 0.95);
+                        display: none;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 1000;
+                        box-sizing: border-box;
+                        padding: 12px;
+                        gap: 12px;
                     }
 
-                    .pack-wrapper { width: 160px; height: 240px; position: relative; perspective: 1000px; cursor: grab; }
+                    .animation-stage {
+                        width: 100%;
+                        flex: 1;
+                        min-height: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        overflow: hidden;
+                    }
+
+                    .pack-wrapper {
+                        width: clamp(140px, 62vw, 220px);
+                        height: clamp(210px, 93vw, 330px);
+                        position: relative;
+                        perspective: 1000px;
+                        cursor: grab;
+                    }
                     .pack-wrapper:active { cursor: grabbing; }
 
                     .pack-body {
@@ -278,7 +305,11 @@ class BinderWebviewProvider {
                     }
 
                     .card-3d {
-                        width: 140px; height: 200px; position: absolute; top: 30px; left: 10px;
+                        width: 88%;
+                        height: 83%;
+                        position: absolute;
+                        top: 12%;
+                        left: 6%;
                         z-index: 2; transform-style: preserve-3d; display: none;
                     }
                     .card-face {
@@ -315,7 +346,7 @@ class BinderWebviewProvider {
                     .pack-recap {
                         display: none;
                         width: min(840px, 92vw);
-                        max-height: 70vh;
+                        max-height: 100%;
                         overflow: auto;
                         border: 1px solid rgba(255,255,255,0.16);
                         border-radius: 12px;
@@ -348,6 +379,24 @@ class BinderWebviewProvider {
                         display: block;
                         margin-bottom: 4px;
                     }
+
+                    @media (max-height: 540px) {
+                        #animationOverlay {
+                            padding: 8px;
+                            gap: 8px;
+                        }
+
+                        #promptText {
+                            margin-top: 0;
+                            font-size: 0.8em;
+                            min-height: 16px;
+                        }
+
+                        .pack-wrapper {
+                            width: clamp(120px, 50vw, 180px);
+                            height: clamp(180px, 75vw, 270px);
+                        }
+                    }
                 </style>
             </head>
             <body>
@@ -376,19 +425,21 @@ class BinderWebviewProvider {
                 </div>
 
                 <div id="animationOverlay">
-                    <div class="pack-wrapper" id="packWrapper">
-                        <div class="pack-top-flap" id="packFlap"><span>▼ DRAG DOWN ▼</span></div>
-                        <div class="pack-body" id="packBody">POKÉMON</div>
-                        <div class="card-3d" id="card3D">
-                            <div class="card-face card-back">
-                                <img src="https://images.pokemontcg.io/cardback.png" alt="Card Back" />
+                    <div class="animation-stage" id="animationStage">
+                        <div class="pack-wrapper" id="packWrapper">
+                            <div class="pack-top-flap" id="packFlap"><span>▼ DRAG DOWN ▼</span></div>
+                            <div class="pack-body" id="packBody">POKÉMON</div>
+                            <div class="card-3d" id="card3D">
+                                <div class="card-face card-back">
+                                    <img src="https://images.pokemontcg.io/cardback.png" alt="Card Back" />
+                                </div>
+                                <div class="card-face card-front" id="cardFrontText"></div>
                             </div>
-                            <div class="card-face card-front" id="cardFrontText"></div>
                         </div>
-                    </div>
-                    <div class="pack-recap" id="packRecap">
-                        <h4 id="packRecapTitle">Pack Results</h4>
-                        <div class="pack-recap-grid" id="packRecapGrid"></div>
+                        <div class="pack-recap" id="packRecap">
+                            <h4 id="packRecapTitle">Pack Results</h4>
+                            <div class="pack-recap-grid" id="packRecapGrid"></div>
+                        </div>
                     </div>
                     <div id="promptText">Click and drag down across the top to peel open!</div>
                 </div>
@@ -456,6 +507,7 @@ class BinderWebviewProvider {
                     const packsList = document.getElementById('packsList');
                     const generationSets = document.getElementById('generationSets');
                     const overlay = document.getElementById('animationOverlay');
+                    const animationStage = document.getElementById('animationStage');
                     const packWrapper = document.getElementById('packWrapper');
                     const packFlap = document.getElementById('packFlap');
                     const packBody = document.getElementById('packBody');
@@ -475,6 +527,38 @@ class BinderWebviewProvider {
                     let pulledCardsQueue = [];
                     let currentRevealIndex = 0;
                     let sequenceState = 'waitingToTear'; 
+
+                    function getAnimationMetrics() {
+                        const stageRect = animationStage.getBoundingClientRect();
+                        const wrapperRect = packWrapper.getBoundingClientRect();
+                        const cardRect = card3D.getBoundingClientRect();
+                        const wrapperHeight = wrapperRect.height || 240;
+                        const cardHeight = cardRect.height || Math.round(wrapperHeight * 0.83);
+
+                        const desiredLift = Math.round(wrapperHeight * 0.58);
+                        const desiredResetAbove = Math.round(wrapperHeight * 0.9);
+
+                        const cardStartTop = wrapperRect.top + Math.round(wrapperHeight * 0.12);
+                        const minCardTop = stageRect.top - Math.round(cardHeight * 0.5);
+                        const maxAllowedLift = Math.max(0, Math.round(cardStartTop - minCardTop));
+                        const safeMaxLift = Math.max(0, maxAllowedLift - Math.round(cardHeight * 0.1));
+
+                        return {
+                            lift: Math.min(desiredLift, safeMaxLift),
+                            revealLift: Math.min(Math.round(wrapperHeight * 0.22), Math.round(safeMaxLift * 0.45)),
+                            drop: Math.round(wrapperHeight * 1.15),
+                            resetAbove: Math.min(desiredResetAbove, safeMaxLift),
+                            slideDown: Math.round(wrapperHeight * 1.04)
+                        };
+                    }
+
+                    function updateAnimationStageSizing() {
+                        const viewportHeight = window.innerHeight;
+                        const availableHeight = Math.max(240, viewportHeight - 110);
+                        animationStage.style.maxHeight = availableHeight + 'px';
+                    }
+
+                    window.addEventListener('resize', updateAnimationStageSizing);
 
                     async function fetchPokemonMeta(id) {
                         if (pokemonMetaCache.has(id)) {
@@ -632,6 +716,7 @@ class BinderWebviewProvider {
                             packBody.style.opacity = '1';
 
                             promptText.innerText = 'Click and drag down across the top to peel open ' + (message.packLabel || 'this pack') + ' (' + pulledCardsQueue.length + ' cards)!';
+                            updateAnimationStageSizing();
                         }
                     });
 
@@ -675,11 +760,12 @@ class BinderWebviewProvider {
                     }
 
                     function executeCardSlideOut() {
+                        const metrics = getAnimationMetrics();
                         card3D.style.display = 'block';
                         card3D.style.transition = 'transform 0.8s cubic-bezier(0.25, 1, 0.5, 1)';
-                        card3D.style.transform = 'translateY(-140px)';
+                        card3D.style.transform = 'translateY(-' + metrics.lift + 'px)';
                         packBody.style.transition = 'transform 0.8s ease-in, opacity 0.8s ease-in';
-                        packBody.style.transform = 'translateY(250px)';
+                        packBody.style.transform = 'translateY(' + metrics.slideDown + 'px)';
                         packBody.style.opacity = '0';
 
                         setTimeout(() => executeHighVelocitySpin(), 850);
@@ -702,17 +788,18 @@ class BinderWebviewProvider {
                         let angle = 0;
                         let velocity = 45; 
                         const deceleration = 0.94; 
+                        const metrics = getAnimationMetrics();
                         
                         function spinLoop() {
                             angle += velocity;
-                            card3D.style.transform = \`translateY(-140px) scale(1.1) rotateY(\${angle}deg)\`;
+                            card3D.style.transform = 'translateY(-' + metrics.revealLift + 'px) scale(1.1) rotateY(' + angle + 'deg)';
                             velocity *= deceleration;
 
                             if (velocity > 0.5) {
                                 requestAnimationFrame(spinLoop);
                             } else {
                                 card3D.style.transition = 'transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                                card3D.style.transform = 'translateY(-140px) scale(1.1) rotateY(180deg)';
+                                card3D.style.transform = 'translateY(-' + metrics.revealLift + 'px) scale(1.1) rotateY(180deg)';
                                 setTimeout(() => {
                                     sequenceState = 'revealed';
                                     const remainingCards = pulledCardsQueue.length - currentRevealIndex - 1;
@@ -728,10 +815,11 @@ class BinderWebviewProvider {
                     }
 
                     function dropCardAndRevealNext() {
+                        const metrics = getAnimationMetrics();
                         sequenceState = 'dropping';
                         promptText.innerText = 'Dropping card...';
                         card3D.style.transition = 'transform 0.45s ease-in, opacity 0.45s ease-in';
-                        card3D.style.transform = 'translateY(280px) scale(0.9) rotateY(180deg)';
+                        card3D.style.transform = 'translateY(' + metrics.drop + 'px) scale(0.9) rotateY(180deg)';
                         card3D.style.opacity = '0';
 
                         setTimeout(() => {
@@ -739,7 +827,7 @@ class BinderWebviewProvider {
                             currentCardObject = pulledCardsQueue[currentRevealIndex] || null;
 
                             card3D.style.transition = 'none';
-                            card3D.style.transform = 'translateY(-220px) scale(0.95) rotateY(0deg)';
+                            card3D.style.transform = 'translateY(-' + metrics.resetAbove + 'px) scale(0.95) rotateY(0deg)';
                             card3D.style.opacity = '1';
 
                             promptText.innerText = 'Revealing card ' + (currentRevealIndex + 1) + ' of ' + pulledCardsQueue.length;

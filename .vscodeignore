@@ -1,9 +1,9 @@
 .vscode/**
 .vscode-test/**
-src/**
-node_modules/**
+.git/**
 .gitignore
 tsconfig.json
 **/*.map
 **/*.ts
-README.md
+**/.DS_Store
+/node_modules

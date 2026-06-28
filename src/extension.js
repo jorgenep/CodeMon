@@ -3,7 +3,7 @@ const { initializeXPTracker } = require('./xpTracker');
 const { createStatusBarWallet } = require('./statusBarWallet');
 const { BinderWebviewProvider } = require('./binderWebview');
 const { checkAchievements, getAchievementState } = require('./achievements');
-const { pokemonDatabase } = require('./pokemonDatabase');
+const { pokemonDatabase, GENERATIONS } = require('./pokemonDatabase');
 
 function activate(context) {
     // context.globalState.update('myCards', []); // Uncomment to reset cards for testing
@@ -124,6 +124,35 @@ function activate(context) {
         context.globalState.update('packsOpened', opened);
         refreshAchievements();
     };
+
+    // Utility Command: grant one free pack for demos and support workflows
+    context.subscriptions.push(
+        vscode.commands.registerCommand('codemon.addPack', async () => {
+            const generation = await vscode.window.showQuickPick(
+                GENERATIONS.map((gen) => ({
+                    label: `Gen ${gen.id} ${gen.name}`,
+                    description: `Cards #${gen.start}-${gen.end}`,
+                    generation: gen.id
+                })),
+                { placeHolder: 'Choose a generation for the bonus pack' }
+            );
+
+            if (!generation) {
+                return;
+            }
+
+            const packs = context.globalState.get('unopenedPacks') || [];
+            packs.push({
+                label: `${generation.label} Booster`,
+                generation: generation.generation,
+                cardsPerPack: 10
+            });
+            await context.globalState.update('unopenedPacks', packs);
+
+            provider.updateBinderData();
+            vscode.window.setStatusBarMessage('$(gift) Bonus pack added to inventory!', 2500);
+        })
+    );
 
     // Debug Command: Display anti-cheat stats and analysis
     context.subscriptions.push(
