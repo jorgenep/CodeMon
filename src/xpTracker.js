@@ -6,6 +6,7 @@ function initializeXPTracker(context, onXPEarned) {
         lastEditTime: 0,
         lastXPTime: 0,
         editCount: 0,
+        linesChanged: 0,           // Tracks meaningful content added/removed
         errorFixHistory: [], // Track recent error fixes to detect cycling
         suspiciousPatterns: 0,
         fileEditCounts: {}, // Track edits per file
@@ -14,28 +15,50 @@ function initializeXPTracker(context, onXPEarned) {
         codeChangePatterns: [], // Track code changes for logical coherence
         trustScore: 100, // Starts at 100, decreases with suspicious activity
         cheatAttempts: 0, // Counter for detected cheat attempts
+
+        // Combo system
+        bugFixCombo: 0,            // Consecutive bug fixes without introducing errors
+        lastBugFixTime: 0,         // Timestamp of last bug fix (for combo window)
+
+        // Session bonuses
+        sessionStartTime: Date.now(),
+        firstXPEarnedToday: false, // Whether the session-first bonus has been used
+        lastSaveXPTime: 0,         // For save XP cooldown
     };
 
     const config = {
         // XP Rewards
-        bugFixXP: 10, // XP for fixing a bug
-        consistentCodingXP: 2, // Small XP for consistent programming
-        fileSaveXP: 2, // XP for saving a file
+        bugFixXP: 10,             // XP per error fixed (multiplied by errorsFixed count)
+        consistentCodingXP: 3,    // XP for meaningful coding activity
+        fileSaveXP: 2,            // XP for saving a file
         
         // Thresholds and cooldowns
-        codingActivityCooldown: 5000, // 5 seconds between consistent coding XP awards
-        
+        codingActivityCooldown: 5000,   // 5 seconds between consistent coding XP awards
+        fileSaveCooldown: 30000,        // Max one save XP per 30 seconds
+        minLinesForXP: 5,               // Minimum net lines changed to award coding XP
+
+        // Combo system
+        comboWindow: 30000,       // 30s window to chain bug fixes
+        comboMultipliers: [1, 1.25, 1.5, 2, 3], // Index = combo count (capped at last)
+
+        // Session bonuses
+        sessionFirstMultiplier: 1.5, // First XP of the session
+
+        // Shiny (rare encounter) system
+        shinyChance: 0.02,        // 2% chance of a 3x rare bonus on any XP event
+        shinyMultiplier: 3,
+
         // Anti-cheat thresholds
-        trustScoreThreshold: 60, // Below this, no XP awarded
-        minFixTime: 500, // Minimum milliseconds to fix an error (too fast = suspicious)
-        maxFixTime: 60000, // Maximum reasonable time to fix (in milliseconds)
-        maxErrorsPerMinute: 15, // Detect if creating errors too fast
+        trustScoreThreshold: 60,  // Below this, no XP awarded
+        minFixTime: 500,          // Minimum milliseconds to fix an error (too fast = suspicious)
+        maxFixTime: 60000,        // Maximum reasonable time to fix (in milliseconds)
+        maxErrorsPerMinute: 15,   // Detect if creating errors too fast
         cycleLookbackWindow: 60000, // 60 second lookback for patterns
         editVelocityThreshold: 100, // Min milliseconds between edits (too fast = bot-like)
-        errorRepeatThreshold: 4, // Same error fixed 4+ times = suspicious
+        errorRepeatThreshold: 4,  // Same error fixed 4+ times = suspicious
         
         // Edit tracking
-        minEditsForXP: 3, // Minimum edits in cooldown period to award XP
+        minEditsForXP: 3,         // Minimum edits in cooldown period to award XP
     };
 
     /**
@@ -208,58 +231,109 @@ function initializeXPTracker(context, onXPEarned) {
     }
 
     /**
+     * Apply session-first and shiny bonuses to a base XP value.
+     * Returns { finalXP, bonuses } where bonuses lists which triggered.
+     */
+    function applyBonuses(baseXP) {
+        let xp = baseXP;
+        const bonuses = [];
+
+        // Session-first bonus (once per session)
+        if (!activityTracker.firstXPEarnedToday) {
+            xp = Math.floor(xp * config.sessionFirstMultiplier);
+            activityTracker.firstXPEarnedToday = true;
+            bonuses.push('session_first');
+        }
+
+        // Shiny (rare) bonus — checked after session bonus
+        if (Math.random() < config.shinyChance) {
+            xp = Math.floor(xp * config.shinyMultiplier);
+            bonuses.push('shiny');
+        }
+
+        return { finalXP: Math.max(1, xp), bonuses };
+    }
+
+    /**
      * Award XP for bug fixes with anti-cheat validation
      */
-    function awardBugFixXP(analysis) {
+    /**
+     * Award XP for bug fixes with anti-cheat validation.
+     * Scales with errorsFixed count and active combo.
+     */
+    function awardBugFixXP(analysis, errorsFixed) {
         // Check trust score first
         if (activityTracker.trustScore < config.trustScoreThreshold) {
             onXPEarned(0, 'bug_fix_flagged');
             return;
         }
         
-        // Calculate XP multiplier based on cheat probability
+        const now = Date.now();
+
+        // Update combo: reset if outside window, else increment
+        if (now - activityTracker.lastBugFixTime > config.comboWindow) {
+            activityTracker.bugFixCombo = 0;
+        }
+        activityTracker.bugFixCombo++;
+        activityTracker.lastBugFixTime = now;
+
+        const comboIndex = Math.min(activityTracker.bugFixCombo - 1, config.comboMultipliers.length - 1);
+        const comboMultiplier = config.comboMultipliers[comboIndex];
+
+        // Scale base XP by number of errors actually fixed
+        const scaledBase = config.bugFixXP * errorsFixed;
+
+        // Apply anti-cheat multiplier (1.0 = clean, approaches 0 if suspicious)
         const cheatProb = analysis.cheatProbability;
-        let xpMultiplier = 1 - cheatProb; // 100% legit = 1x, 50% suspicious = 0.5x
-        xpMultiplier = Math.max(0.1, xpMultiplier); // Minimum 10% XP for questionable fixes
-        
-        const xpAwarded = Math.floor(config.bugFixXP * xpMultiplier);
+        const cheatMultiplier = Math.max(0.1, 1 - cheatProb);
+
+        const preBonus = Math.floor(scaledBase * comboMultiplier * cheatMultiplier);
+        const { finalXP, bonuses } = applyBonuses(preBonus);
+
         const xpType = analysis.isCheating ? 'bug_fix_suspicious' : 'bug_fix';
-        
-        if (analysis.isCheating) {
-            onXPEarned(xpAwarded, xpType, {
+
+        onXPEarned(finalXP, xpType, {
+            errorsFixed,
+            combo: activityTracker.bugFixCombo,
+            comboMultiplier,
+            bonuses,
+            ...(analysis.isCheating && {
                 trustScore: activityTracker.trustScore,
                 suspicionScore: analysis.suspicionScore,
                 factors: analysis.factors,
-            });
-        } else {
-            onXPEarned(xpAwarded, xpType);
-        }
+            }),
+        });
     }
 
     /**
-     * Award XP for consistent coding activity
+     * Award XP for consistent coding activity.
+     * Gates on meaningful lines changed, not raw edit count.
      */
     function awardConsistentCodingXP() {
         const now = Date.now();
         
-        // Check if enough time has passed since last XP award
-        if (now - activityTracker.lastXPTime < config.codingActivityCooldown) {
-            return;
-        }
-        
-        // Check if there have been enough edits
-        if (activityTracker.editCount >= config.minEditsForXP) {
-            onXPEarned(config.consistentCodingXP, 'consistent_coding');
-            activityTracker.lastXPTime = now;
-            activityTracker.editCount = 0;
-        }
+        if (now - activityTracker.lastXPTime < config.codingActivityCooldown) return;
+        if (activityTracker.editCount < config.minEditsForXP) return;
+        if (activityTracker.linesChanged < config.minLinesForXP) return;
+
+        const { finalXP, bonuses } = applyBonuses(config.consistentCodingXP);
+        onXPEarned(finalXP, 'consistent_coding', { linesChanged: activityTracker.linesChanged, bonuses });
+
+        activityTracker.lastXPTime = now;
+        activityTracker.editCount = 0;
+        activityTracker.linesChanged = 0;
     }
 
     /**
-     * Award XP for file saves
+     * Award XP for file saves, with a cooldown to prevent spam.
      */
     function awardFileSaveXP() {
-        onXPEarned(config.fileSaveXP, 'file_save');
+        const now = Date.now();
+        if (now - activityTracker.lastSaveXPTime < config.fileSaveCooldown) return;
+        activityTracker.lastSaveXPTime = now;
+
+        const { finalXP, bonuses } = applyBonuses(config.fileSaveXP);
+        onXPEarned(finalXP, 'file_save', { bonuses });
     }
 
     /**
@@ -272,22 +346,21 @@ function initializeXPTracker(context, onXPEarned) {
             
             // Track edit timestamp for velocity analysis
             activityTracker.editTimestamps.push(now);
-            // Keep only last 60 seconds of edits
             activityTracker.editTimestamps = activityTracker.editTimestamps.filter(t => now - t < 60000);
             
-            // Track edit count
             activityTracker.editCount++;
-            
-            // Track file-specific edits
-            if (!activityTracker.fileEditCounts[uri]) {
-                activityTracker.fileEditCounts[uri] = 0;
+
+            // Count net lines added/removed across all changes in this event
+            for (const change of event.contentChanges) {
+                const linesAdded = (change.text.match(/\n/g) || []).length;
+                const linesRemoved = change.range.end.line - change.range.start.line;
+                activityTracker.linesChanged += Math.abs(linesAdded - linesRemoved) + (linesAdded > 0 ? 1 : 0);
             }
-            activityTracker.fileEditCounts[uri]++;
-            
-            // Update last edit time
+
+            // Track file-specific edits
+            activityTracker.fileEditCounts[uri] = (activityTracker.fileEditCounts[uri] || 0) + 1;
             activityTracker.lastEditTime = now;
             
-            // Try to award XP for consistent coding
             awardConsistentCodingXP();
         }
     });
@@ -326,15 +399,19 @@ function initializeXPTracker(context, onXPEarned) {
         if (currentErrorCount < previousErrorCount) {
             const errorsBefore = previousErrorCount;
             const errorsAfter = currentErrorCount;
+            const errorsFixed = errorsBefore - errorsAfter;
             
             // Run advanced cheat detection analysis
             const analysis = detectCheating(errorsBefore, errorsAfter, previousErrorLocations, file, previousDiagnostics);
             
-            // Award XP (amount depends on cheating analysis)
-            awardBugFixXP(analysis);
+            // Award XP scaled to how many errors were actually fixed
+            awardBugFixXP(analysis, errorsFixed);
         }
-        // Detect if errors are being artificially created
+        // Detect if errors are being artificially created — also breaks the combo
         else if (currentErrorCount > previousErrorCount) {
+            // Reset combo: introducing errors breaks the streak
+            activityTracker.bugFixCombo = 0;
+
             // User introduced new errors - track but don't penalize yet
             const newErrors = currentErrorCount - previousErrorCount;
             activityTracker.errorFixHistory.push({
@@ -358,22 +435,30 @@ function initializeXPTracker(context, onXPEarned) {
     return {
         getActivityStats: () => ({
             editCount: activityTracker.editCount,
+            linesChanged: activityTracker.linesChanged,
             trustScore: activityTracker.trustScore,
             cheatAttempts: activityTracker.cheatAttempts,
             suspiciousPatterns: activityTracker.suspiciousPatterns,
             fileEditCounts: activityTracker.fileEditCounts,
             errorFixCount: activityTracker.errorFixHistory.length,
+            bugFixCombo: activityTracker.bugFixCombo,
         }),
         getDetailedAnalysis: () => ({
             trustScore: activityTracker.trustScore,
             cheatAttempts: activityTracker.cheatAttempts,
             recentHistory: activityTracker.errorFixHistory.slice(-10),
             errorTypeFrequency: activityTracker.errorTypeFrequency,
+            bugFixCombo: activityTracker.bugFixCombo,
+            comboMultiplier: config.comboMultipliers[
+                Math.min(activityTracker.bugFixCombo - 1, config.comboMultipliers.length - 1)
+            ] ?? 1,
         }),
         resetActivityStats: () => {
             activityTracker.editCount = 0;
+            activityTracker.linesChanged = 0;
             activityTracker.fileEditCounts = {};
             activityTracker.editTimestamps = [];
+            activityTracker.bugFixCombo = 0;
         },
     };
 }
